@@ -57,8 +57,8 @@ public:
     ~view_format() = default;
 
     view_format(const char *fmt, R &&range)
-        : fmt(fmt),
-          _range(std::move(range)) {}
+        : _range(std::move(range)), fmt(fmt) {
+    }
 
     iterator begin() const {
         return iterator_type(std::begin(_range), fmt);
