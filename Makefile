@@ -1,6 +1,6 @@
 CC=g++-10
 
-FLAGS=-std=c++2a -ggdb -Wall -Wunused-function -Wextra -Werror
+FLAGS=-std=c++2a -ggdb -Wall -Wunused-function -Wextra # -Werror
 
 INCLUDE_DIRS = src ./boost_1_74_0
 INCLUDE= $(foreach p, $(INCLUDE_DIRS), -I$p)

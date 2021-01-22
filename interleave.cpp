@@ -17,41 +17,57 @@ template <typename T>
 using range_reference_t = decltype(*std::begin(std::declval<T&>()));
 
 template <typename T, size_t ... indices>
-constexpr auto values_to_tuples(T tpl, std::index_sequence<indices...>) {
+constexpr auto range_to_begin_it(T tpl, std::index_sequence<indices...>) {
     return std::make_tuple(std::begin(std::get<indices>(tpl))...);
 }
 
 template <typename T, size_t ... indices>
-constexpr auto values_to_tuples2(T tpl, std::index_sequence<indices...>) {
+constexpr auto range_to_end_it(T tpl, std::index_sequence<indices...>) {
     return std::make_tuple(std::end(std::get<indices>(tpl))...);
 }
 
 
 template <typename... R>
 class view_interleave {
+    struct iterator_type;
+
+public:
+    view_interleave(R&& ...rr) : _ranges(rr...) {}
+    using iterator = iterator_type;
+
+    iterator begin() {
+        return iterator(_ranges);
+    }
+
+    iterator end() {
+        return iterator(_ranges, true);
+    }
+
+private:
+
     std::tuple<R...> _ranges;
 
-    using it_type = decltype(values_to_tuples(
+    using it_type = decltype(range_to_begin_it(
         _ranges,
         std::make_index_sequence<std::tuple_size<std::tuple<R...>>::value>{}));
 
-    std::tuple<it_type> iterators_ends;
-    std::tuple<it_type> iterators;
-
-
     struct iterator_type {
+        it_type iterators;
         size_t current_iterator{0};
-        std::tuple<decltype(values_to_tuples(
-            _ranges,
-            std::make_index_sequence<std::tuple_size<std::tuple<R...>>::value>{}))>
-            iterators;
 
         using reference = int; //decltype(*(std::get<0>(iterators)));
 
-        iterator_type(std::tuple<it_type> its)
-            : iterators(its) {
+        iterator_type(std::tuple<R...> _ranges)
+            : iterators(range_to_begin_it(_ranges,
+                        std::index_sequence_for<R...>{})) {
             static_assert(std::tuple_size<std::tuple<R...>>::value == 2, "hmm");
         }
+
+        iterator_type(std::tuple<R...> _ranges, bool)
+            : iterators(range_to_end_it(_ranges,
+                        std::index_sequence_for<R...>{})) {
+        }
+
 
         /* Super broken for now.. */
         bool operator==(const iterator_type& rhs) { return iterators == rhs.iterators; }
@@ -62,9 +78,27 @@ class view_interleave {
             switch (current_iterator) {
                 case 0:
                     std::get<0>(iterators)++;
+                    break;
                 case 1:
                     std::get<1>(iterators)++;
-                break;
+                    break;
+            }
+
+            current_iterator++;
+            if (current_iterator == 2) {//std::tuple_size(iterators)) {
+                current_iterator = 0;
+            }
+            return *this;
+        }
+
+        iterator_type &operator++() {
+            switch (current_iterator) {
+                case 0:
+                    ++std::get<0>(iterators);
+                    break;
+                case 1:
+                    ++std::get<1>(iterators);
+                    break;
             }
 
             current_iterator++;
@@ -74,45 +108,37 @@ class view_interleave {
             return *this;
         }
 
-        iterator_type &operator++() {
-            ++(*this);
-            return *this;
-        }
-
-        int operator*() {
+        auto& operator*() {
             switch (current_iterator) {
-                case 1:
-                    return *(std::get<0>(iterators));
+                case 0:
+                    return *std::get<0>(iterators);
                 break;
-                case 2:
-                    return *(std::get<1>(iterators));
+                case 1:
+                    return *std::get<1>(iterators);
                 break;
             }
         }
     };
-
-public:
-    view_interleave(R&& ...rr) : _ranges(std::forward_as_tuple(rr...)) {}
-
-    using iterator = iterator_type;
-
-    iterator begin() {
-        return iterator(iterators);
-    }
-
-    iterator end() {
-        return iterator(iterators_ends);
-    }
 };
 
 template <typename... R>
 view_interleave(R && ...)->view_interleave<R...>;
 
+struct interleave_fn {
+    template <typename... R>
+    auto operator()(R&& ...r) {
+        return view_interleave{std::forward<R>(r)...};
+    }
+};
+
+namespace views {
+    interleave_fn interleave;
+}
 
 int main() {
     std::vector<int> v{3, 5};
     std::list<int> l{3, 6};
-    view_interleave vi(v, l);
+    auto vi = views::interleave(v, l);
     for (auto e : vi)
         std::cout << e << std::endl;
 }
