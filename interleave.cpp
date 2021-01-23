@@ -70,9 +70,9 @@ private:
 
 
         /* Super broken for now.. */
-        bool operator==(const iterator_type& rhs) { return iterators == rhs.iterators; }
+        bool operator==(const iterator_type& rhs) const { return iterators == rhs.iterators; }
         /* Super broken for now.. */
-        bool operator!=(const iterator_type& rhs) { return !(*this == rhs); }
+        bool operator!=(const iterator_type& rhs) const { return !(*this == rhs); }
 
         iterator_type operator++(int) {
             switch (current_iterator) {
@@ -85,7 +85,7 @@ private:
             }
 
             current_iterator++;
-            if (current_iterator == 2) {//std::tuple_size(iterators)) {
+            if (current_iterator == std::tuple_size_v<it_type>) {
                 current_iterator = 0;
             }
             return *this;
@@ -102,7 +102,7 @@ private:
             }
 
             current_iterator++;
-            if (current_iterator == std::tuple_size(iterators)) {
+            if (current_iterator == std::tuple_size_v<it_type>) {
                 current_iterator = 0;
             }
             return *this;
